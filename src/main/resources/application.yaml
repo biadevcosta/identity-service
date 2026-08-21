@@ -1,0 +1,9 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: identity
+  datasource:
+    url: jdbc:mysql://localhost:3309/identity_db
+    username: root
+    password: root

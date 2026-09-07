@@ -1,0 +1,6 @@
+# Integration-test profile: use the committed test key pair instead of the local/git-ignored one.
+# The datasource is supplied by Testcontainers via @DynamicPropertySource.
+security:
+  jwt:
+    private-key: classpath:test-private.pem
+    public-key: classpath:test-public.pem

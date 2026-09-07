@@ -1,5 +1,6 @@
 server:
   port: 8080
+
 spring:
   application:
     name: identity
@@ -7,3 +8,31 @@ spring:
     url: jdbc:mysql://localhost:3309/identity_db
     username: root
     password: root
+  flyway:
+    locations: classpath:db/migration
+
+# Custom properties consumed by infrastructure (bound with @ConfigurationProperties).
+security:
+  jwt:
+    # RS256 key pair. private.pem is git-ignored and generated locally (see README);
+    # public.pem is shared with scheduling-service and history-service.
+    private-key: classpath:private.pem
+    public-key: classpath:public.pem
+    issuer: hospital-identity
+    audience: hospital-services
+    access-ttl-seconds: 3600      # 1 hour
+    refresh-ttl-seconds: 604800   # 7 days
+  password:
+    # Argon2id parameters (OWASP baseline).
+    argon2:
+      salt-length: 16
+      hash-length: 32
+      parallelism: 1
+      memory-kb: 19456
+      iterations: 2
+
+app:
+  # Dev admin, created on startup if absent (override in real environments).
+  admin:
+    email: admin@hospital.local
+    password: admin12345

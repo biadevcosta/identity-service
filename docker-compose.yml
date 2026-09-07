@@ -10,6 +10,26 @@ services:
       - "3309:3306"
     volumes:
       - mysql-identity-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  identity:
+    build: .
+    container_name: identity-service
+    restart: unless-stopped
+    depends_on:
+      mysql-identity:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # inside the compose network MySQL listens on 3306 at hostname mysql-identity
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-identity:3306/identity_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
 
 volumes:
   mysql-identity-data:

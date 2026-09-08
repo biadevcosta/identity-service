@@ -1,14 +1,14 @@
 {
   "_type": "export",
   "__export_format": 4,
-  "__export_date": "2026-09-06T00:00:00.000Z",
+  "__export_date": "2026-09-07T00:00:00.000Z",
   "__export_source": "insomnia.desktop.app",
   "resources": [
     {
       "_id": "wrk_identity",
       "_type": "workspace",
       "name": "identity-service",
-      "description": "Hospital identity-service — login, refresh (rotation), ADMIN-only registration, profile lookup, and error cases. Tokens chain automatically: just run 'POST /auth/login (admin)' once, everything else pulls from it.",
+      "description": "Hospital identity-service — health, login, refresh (single-use rotation), ADMIN-only user registration, public profile lookup, plus the error cases (401 / 403 / 404 / 409 / 400). Tokens chain automatically: run '1 · auth → POST /auth/login (admin)' once and every other request pulls its token from that response. Run 'POST /users (register DOCTOR)' before the doctor-login / 403 requests.",
       "scope": "collection"
     },
     {
@@ -20,17 +20,32 @@
         "base_url": "http://localhost:8080",
         "admin_email": "admin@hospital.local",
         "admin_password": "admin12345",
+        "doctor_email": "doc@hospital.local",
+        "doctor_password": "secret12345",
         "user_id": ""
       },
       "dataPropertyOrder": {
-        "&": ["base_url", "admin_email", "admin_password", "user_id"]
+        "&": ["base_url", "admin_email", "admin_password", "doctor_email", "doctor_password", "user_id"]
       },
       "metaSortKey": 1
     },
 
+    { "_id": "fld_health", "_type": "request_group", "parentId": "wrk_identity", "name": "0 · health", "metaSortKey": 0 },
     { "_id": "fld_auth", "_type": "request_group", "parentId": "wrk_identity", "name": "1 · auth", "metaSortKey": 1 },
     { "_id": "fld_users", "_type": "request_group", "parentId": "wrk_identity", "name": "2 · users (admin)", "metaSortKey": 2 },
     { "_id": "fld_errors", "_type": "request_group", "parentId": "wrk_identity", "name": "3 · error cases", "metaSortKey": 3 },
+
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_health",
+      "name": "GET /actuator/health  → 200 { status: UP }",
+      "method": "GET",
+      "url": "{{ _.base_url }}/actuator/health",
+      "headers": [],
+      "description": "Public liveness/readiness probe. Use it to confirm the service is up before running the rest.",
+      "metaSortKey": 1
+    },
 
     {
       "_id": "req_login_admin",
@@ -44,7 +59,7 @@
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"{{ _.admin_email }}\",\n  \"password\": \"{{ _.admin_password }}\"\n}"
       },
-      "description": "Run this first. Response: { accessToken, refreshToken, tokenType: Bearer, expiresIn: 3600 }. Every other request reads its tokens from this response automatically.",
+      "description": "Run this first. Response: { accessToken, refreshToken, tokenType: \"Bearer\", expiresIn: 3600 }. Every other authenticated request reads its accessToken from this response automatically.",
       "metaSortKey": 1
     },
     {
@@ -57,24 +72,24 @@
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"refreshToken\": \"{% response 'body', 'req_login_admin', 'b64::JC5yZWZyZXNoVG9rZW4=::46b', 'when-expired', 3000 %}\"\n}"
+        "text": "{\n  \"refreshToken\": \"{% response 'body', 'req_login_admin', 'b64::JC5yZWZyZXNoVG9rZW4=::46b', 'never', 60 %}\"\n}"
       },
-      "description": "Exchanges the login refresh token for a new pair. The presented token is revoked (rotation).",
+      "description": "Exchanges the login refreshToken for a brand-new pair. The presented token is revoked (rotation). NOTE: after you run this once, the login refreshToken is dead — re-run 'POST /auth/login (admin)' to get a fresh one.",
       "metaSortKey": 2
     },
     {
       "_id": "req_refresh_reuse",
       "_type": "request",
       "parentId": "fld_auth",
-      "name": "POST /auth/refresh  (reuse the same token) → 401",
+      "name": "POST /auth/refresh  (reuse same token) → 401",
       "method": "POST",
       "url": "{{ _.base_url }}/auth/refresh",
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"refreshToken\": \"{% response 'body', 'req_login_admin', 'b64::JC5yZWZyZXNoVG9rZW4=::46b', 'when-expired', 3000 %}\"\n}"
+        "text": "{\n  \"refreshToken\": \"{% response 'body', 'req_login_admin', 'b64::JC5yZWZyZXNoVG9rZW4=::46b', 'never', 60 %}\"\n}"
       },
-      "description": "Run right after 'POST /auth/refresh'. Same (now revoked) token → 401. Proves single-use rotation.",
+      "description": "Run right after 'POST /auth/refresh'. Same (now revoked) token → 401 { title: \"Unauthorized\", detail: \"Invalid refresh token\" }. Proves single-use rotation.",
       "metaSortKey": 3
     },
     {
@@ -89,22 +104,22 @@
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"{{ _.admin_email }}\",\n  \"password\": \"wrong-password\"\n}"
       },
-      "description": "Generic 'Invalid credentials' — same response as an unknown email.",
+      "description": "Generic 'Invalid credentials' (401) — byte-for-byte the same response as an unknown email, so you can't probe which emails exist.",
       "metaSortKey": 4
     },
     {
       "_id": "req_login_doctor",
       "_type": "request",
       "parentId": "fld_auth",
-      "name": "POST /auth/login  (the registered doctor) → 200",
+      "name": "POST /auth/login  (registered doctor) → 200",
       "method": "POST",
       "url": "{{ _.base_url }}/auth/login",
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"email\": \"doc@hospital.local\",\n  \"password\": \"secret12345\"\n}"
+        "text": "{\n  \"email\": \"{{ _.doctor_email }}\",\n  \"password\": \"{{ _.doctor_password }}\"\n}"
       },
-      "description": "Run AFTER '2 · users (admin) → POST /users (register DOCTOR)'. Its token is used by the 403 test.",
+      "description": "Run AFTER '2 · users (admin) → POST /users (register DOCTOR)'. Its accessToken is what the 403 test sends.",
       "metaSortKey": 5
     },
 
@@ -117,13 +132,13 @@
       "url": "{{ _.base_url }}/users",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'when-expired', 3000 %}" }
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
       ],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"email\": \"doc@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"DOCTOR\",\n  \"fullName\": \"Dr House\",\n  \"crm\": \"CRM-1\",\n  \"specialty\": \"Diagnostics\"\n}"
+        "text": "{\n  \"email\": \"{{ _.doctor_email }}\",\n  \"password\": \"{{ _.doctor_password }}\",\n  \"role\": \"DOCTOR\",\n  \"fullName\": \"Dr House\",\n  \"crm\": \"CRM-1\",\n  \"specialty\": \"Diagnostics\"\n}"
       },
-      "description": "Response: { id, email, role, fullName }. 'GET /users/{id}' reads the id from here.",
+      "description": "Response: 201 { id, email, role, fullName }. 'GET /users/{id} (chained)' reads the id from here. Re-running gives 409 (email already used).",
       "metaSortKey": 1
     },
     {
@@ -135,12 +150,13 @@
       "url": "{{ _.base_url }}/users",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'when-expired', 3000 %}" }
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
       ],
       "body": {
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"nurse@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"NURSE\",\n  \"fullName\": \"Nurse Joy\"\n}"
       },
+      "description": "NURSE/PATIENT/ADMIN take no crm/specialty (sending them → 400).",
       "metaSortKey": 2
     },
     {
@@ -152,25 +168,43 @@
       "url": "{{ _.base_url }}/users",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'when-expired', 3000 %}" }
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
       ],
       "body": {
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"pat@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"PATIENT\",\n  \"fullName\": \"John Doe\"\n}"
       },
-      "description": "For a PATIENT the access token later carries patientId = sub.",
+      "description": "For a PATIENT the access token later also carries patientId = sub. Log in as this user and inspect the JWT at https://jwt.io.",
       "metaSortKey": 3
+    },
+    {
+      "_id": "req_register_admin",
+      "_type": "request",
+      "parentId": "fld_users",
+      "name": "POST /users  (register ADMIN) → 201",
+      "method": "POST",
+      "url": "{{ _.base_url }}/users",
+      "headers": [
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"admin2@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"ADMIN\",\n  \"fullName\": \"Second Admin\"\n}"
+      },
+      "description": "An ADMIN can mint more ADMINs.",
+      "metaSortKey": 4
     },
     {
       "_id": "req_get_user",
       "_type": "request",
       "parentId": "fld_users",
-      "name": "GET /users/{id}  (chained) → 200",
+      "name": "GET /users/{id}  (chained from register DOCTOR) → 200",
       "method": "GET",
-      "url": "{{ _.base_url }}/users/{% response 'body', 'req_register_doctor', 'b64::JC5pZA==::46b', 'when-expired', 600 %}",
+      "url": "{{ _.base_url }}/users/{% response 'body', 'req_register_doctor', 'b64::JC5pZA==::46b', 'never', 60 %}",
       "headers": [],
-      "description": "Public route (used by notification/history). Response: { id, name, email, role } — 'name' is the fullName.",
-      "metaSortKey": 4
+      "description": "Public route (scheduling-service / history-service use it to resolve names). Response: { id, name, email, role } — 'name' is the fullName.",
+      "metaSortKey": 5
     },
     {
       "_id": "req_get_user_manual",
@@ -181,7 +215,7 @@
       "url": "{{ _.base_url }}/users/{{ _.user_id }}",
       "headers": [],
       "description": "Fallback: paste an id into the 'user_id' environment variable and run this.",
-      "metaSortKey": 5
+      "metaSortKey": 6
     },
 
     {
@@ -196,6 +230,7 @@
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"nobody@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"PATIENT\",\n  \"fullName\": \"Nobody\"\n}"
       },
+      "description": "No Authorization header → 401 (resource server rejects before the controller).",
       "metaSortKey": 1
     },
     {
@@ -207,13 +242,13 @@
       "url": "{{ _.base_url }}/users",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_doctor', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'when-expired', 3000 %}" }
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_doctor', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
       ],
       "body": {
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"someone@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"PATIENT\",\n  \"fullName\": \"Someone\"\n}"
       },
-      "description": "Run '1 · auth → POST /auth/login (the registered doctor)' first so this has a non-admin token to send.",
+      "description": "Run '1 · auth → POST /auth/login (registered doctor)' first so this has a non-admin token to send. Valid token, wrong role → 403.",
       "metaSortKey": 2
     },
     {
@@ -225,13 +260,13 @@
       "url": "{{ _.base_url }}/users",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'when-expired', 3000 %}" }
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
       ],
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"email\": \"doc@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"NURSE\",\n  \"fullName\": \"Duplicate\"\n}"
+        "text": "{\n  \"email\": \"{{ _.doctor_email }}\",\n  \"password\": \"secret12345\",\n  \"role\": \"NURSE\",\n  \"fullName\": \"Duplicate\"\n}"
       },
-      "description": "Same email as the registered doctor.",
+      "description": "Same email as the registered doctor → 409 ProblemDetail.",
       "metaSortKey": 3
     },
     {
@@ -243,7 +278,7 @@
       "url": "{{ _.base_url }}/users",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'when-expired', 3000 %}" }
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
       ],
       "body": {
         "mimeType": "application/json",
@@ -261,23 +296,24 @@
       "url": "{{ _.base_url }}/users",
       "headers": [
         { "name": "Content-Type", "value": "application/json" },
-        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'when-expired', 3000 %}" }
+        { "name": "Authorization", "value": "Bearer {% response 'body', 'req_login_admin', 'b64::JC5hY2Nlc3NUb2tlbg==::46b', 'never', 60 %}" }
       ],
       "body": {
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"baddoc@hospital.local\",\n  \"password\": \"secret12345\",\n  \"role\": \"DOCTOR\",\n  \"fullName\": \"Bad Doc\"\n}"
       },
-      "description": "Domain invariant: a doctor must carry crm + specialty.",
+      "description": "Domain invariant enforced in User.register: a DOCTOR must carry crm + specialty.",
       "metaSortKey": 5
     },
     {
       "_id": "req_err_get_unknown",
       "_type": "request",
       "parentId": "fld_errors",
-      "name": "GET /users/does-not-exist → 404",
+      "name": "GET /users/00000000-0000-0000-0000-000000000000 → 404",
       "method": "GET",
-      "url": "{{ _.base_url }}/users/does-not-exist",
+      "url": "{{ _.base_url }}/users/00000000-0000-0000-0000-000000000000",
       "headers": [],
+      "description": "Unknown id → 404 ProblemDetail { title: \"Not Found\", detail: \"User not found: ...\" }.",
       "metaSortKey": 6
     },
     {
@@ -292,6 +328,7 @@
         "mimeType": "application/json",
         "text": "{\n  \"refreshToken\": \"not-a-real-token\"\n}"
       },
+      "description": "Malformed / unknown refresh token → 401.",
       "metaSortKey": 7
     }
   ]

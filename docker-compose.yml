@@ -31,5 +31,22 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
 
+  # Web DB admin — browse identity_db at http://localhost:8082 (login: root / root, already pre-filled)
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: phpmyadmin-identity
+    restart: unless-stopped
+    depends_on:
+      mysql-identity:
+        condition: service_healthy
+    ports:
+      - "8082:80"
+    environment:
+      PMA_HOST: mysql-identity
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+      UPLOAD_LIMIT: 64M
+
 volumes:
   mysql-identity-data:

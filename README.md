@@ -15,6 +15,7 @@ Port: **8080**. Database: `identity_db` (MySQL).
 | `POST /users` | `ADMIN` bearer token | register a `DOCTOR` / `NURSE` / `PATIENT` / `ADMIN` → `201 { id, email, role, fullName }` |
 | `GET /users/{id}` | public | `{ id, name, email, role }` — used by the other services to resolve names |
 | `GET /actuator/health` | public | health probe |
+| `GET /swagger-ui.html`, `GET /v3/api-docs` | public | interactive API docs (springdoc-openapi) |
 
 **Access token claims:** `iss` (`hospital-identity`), `aud` (`hospital-services`), `sub` (userId),
 `role`, `iat`, `exp` (1 h), and `patientId` (only for `PATIENT` users, equal to `sub`).
@@ -92,6 +93,20 @@ Or everything in containers (builds the image, waits for MySQL):
 cd identity-service
 docker compose up --build
 ```
+
+`docker compose` also starts **phpMyAdmin** on <http://localhost:8082> (auto-logged in as `root`/`root`,
+database `identity_db`) to browse the tables.
+
+## API docs (OpenAPI / Swagger)
+
+`springdoc-openapi` exposes the live spec — no separate file to keep in sync:
+
+| URL | What |
+|---|---|
+| <http://localhost:8080/swagger-ui.html> | Swagger UI. Click **Authorize**, paste an `accessToken` from `POST /auth/login`, then call `POST /users`. |
+| <http://localhost:8080/v3/api-docs> | raw OpenAPI 3.1 JSON |
+
+All three doc paths (`/swagger-ui/**`, `/v3/api-docs/**`) are `permitAll` in `SecurityConfig`.
 
 Quick check:
 

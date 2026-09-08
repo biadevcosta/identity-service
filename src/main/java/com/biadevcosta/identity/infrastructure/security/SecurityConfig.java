@@ -21,7 +21,8 @@ import java.util.ArrayList;
 /**
  * Stateless resource server for the identity service's own protected routes ({@code POST /users}).
  * Public routes: {@code POST /auth/**} (login, refresh), {@code GET /users/*} (profile lookup by the
- * other services), {@code /actuator/**}. The RS256 access token is validated with the shared public
+ * other services), {@code /actuator/**}, and the API docs ({@code /v3/api-docs/**},
+ * {@code /swagger-ui/**}). The RS256 access token is validated with the shared public
  * key; the {@code role} claim becomes a {@code ROLE_*} authority so {@code @PreAuthorize("hasRole('ADMIN')")}
  * on the controller can gate registration.
  */
@@ -36,6 +37,7 @@ public class SecurityConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/*").permitAll()
                         .anyRequest().authenticated())

@@ -19,6 +19,7 @@
 		<jacoco.version>0.8.13</jacoco.version>
 		<testcontainers.version>1.21.3</testcontainers.version>
 		<bouncycastle.version>1.85.2</bouncycastle.version>
+		<springdoc.version>3.1.1</springdoc.version>
 	</properties>
 
 	<dependencyManagement>
@@ -46,6 +47,13 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
+		<!-- API docs: OpenAPI 3 spec at /v3/api-docs + Swagger UI at /swagger-ui.html -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
 		</dependency>
 
 		<!-- security: issue RS256 JWT (Nimbus) + validate it as a resource server on ADMIN routes -->

@@ -11,6 +11,14 @@ spring:
   flyway:
     locations: classpath:db/migration
 
+# API docs (springdoc-openapi): JSON at /v3/api-docs, UI at /swagger-ui.html
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+
 # Custom properties consumed by infrastructure (bound with @ConfigurationProperties).
 security:
   jwt:

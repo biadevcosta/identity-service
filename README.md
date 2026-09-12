@@ -6,6 +6,20 @@ validate with the shared public key. It also acts as a resource server for its o
 
 Port: **8080**. Database: `identity_db` (MySQL).
 
+> Part of the [Hospital Appointment System](../README.md) — see the root README for the
+> system-wide architecture, business rules, and how to run all four services together.
+
+## Key features
+
+- User registration by role (`DOCTOR`, `NURSE`, `PATIENT`), restricted to callers with `ADMIN`.
+- Login with e-mail + password, passwords hashed with **Argon2id** (never stored in clear).
+- **JWT access tokens signed with RS256** — the private key never leaves this service; every other
+  service validates the signature with the public key alone.
+- **Refresh token rotation**: opaque, single-use, revocable, stored only as a SHA-256 hash.
+- `GET /users/{id}` lets the other three services resolve a user's current name/e-mail on demand.
+- A seeded `ADMIN` account on first startup, so the system is usable right after `docker compose up`.
+- Interactive API docs (Swagger/OpenAPI) with no separate spec file to maintain.
+
 ## What it does
 
 | Endpoint | Auth | Purpose |

@@ -4,6 +4,7 @@ import com.biadevcosta.identity.application.AuthTokens;
 import com.biadevcosta.identity.application.usecase.AuthenticateUseCase;
 import com.biadevcosta.identity.application.usecase.RefreshAccessTokenUseCase;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -41,7 +42,11 @@ public class AuthController {
         return TokenResponse.from(refreshAccessTokenUseCase.refresh(request.refreshToken()));
     }
 
-    public record LoginRequest(@NotBlank String email, @NotBlank String password) {
+    public record LoginRequest(
+            @NotBlank @Schema(example = "admin@hospital.local", description = "Seeded bootstrap admin — use it to log in and register the first DOCTOR/PATIENT.")
+            String email,
+            @NotBlank @Schema(example = "admin12345")
+            String password) {
     }
 
     public record RefreshRequest(@NotBlank String refreshToken) {

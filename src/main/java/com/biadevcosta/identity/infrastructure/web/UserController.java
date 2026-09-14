@@ -7,6 +7,7 @@ import com.biadevcosta.identity.domain.Role;
 import com.biadevcosta.identity.domain.User;
 import com.biadevcosta.identity.domain.exception.UserNotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -63,12 +64,19 @@ public class UserController {
     }
 
     public record RegisterUserRequest(
-            @NotBlank String email,
-            @NotBlank String password,
-            @NotNull Role role,
-            @NotBlank String fullName,
+            @NotBlank @Schema(example = "dr.silva@hospital.local")
+            String email,
+            @NotBlank @Schema(example = "secret123")
+            String password,
+            @NotNull @Schema(example = "DOCTOR", description = "DOCTOR requires crm + specialty; NURSE/PATIENT/ADMIN ignore them.")
+            Role role,
+            @NotBlank @Schema(example = "Dra. Ana Silva")
+            String fullName,
+            @Schema(example = "+55 11 91234-5678")
             String phone,
+            @Schema(example = "12345-SP")
             String crm,
+            @Schema(example = "Cardiologia")
             String specialty) {
     }
 

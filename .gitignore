@@ -58,3 +58,6 @@ replay_pid*
 
 # RSA private key (JWT signing) — never commit
 src/main/resources/private.pem
+
+allure-results/
+.allure/

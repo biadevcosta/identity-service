@@ -17,6 +17,7 @@
 	<properties>
 		<java.version>21</java.version>
 		<jacoco.version>0.8.13</jacoco.version>
+		<allure.version>2.29.0</allure.version>
 		<testcontainers.version>1.21.3</testcontainers.version>
 		<bouncycastle.version>1.85.2</bouncycastle.version>
 		<springdoc.version>3.1.1</springdoc.version>
@@ -119,6 +120,13 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>mysql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Allure JUnit 5 integration -->
+		<dependency>
+			<groupId>io.qameta.allure</groupId>
+			<artifactId>allure-junit5</artifactId>
+			<version>${allure.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
